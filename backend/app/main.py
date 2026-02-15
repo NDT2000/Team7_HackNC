@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .threat_analyzer import ThreatAnalyzer
-from .models import MessageInput, TransactionInput
+from .models import MessageInput, TransactionInput, AnalyzeRequest, AnalyzeResponse
 
 # from .config import settings
 # from .models import AnalyzeRequest, AnalyzeResponse
@@ -33,7 +33,49 @@ def health() -> Dict[str, Any]:
 
 @app.get("/alerts")
 def alerts(limit: int = 50):
-    return {"alerts": 50}
+    """Return mock alerts for testing"""
+    return {
+        "alerts": [
+            {
+                "ts": int(time.time()),
+                "case_id": "case_001",
+                "entity": "0x742d35Cc0633a2ca6abe7D17dd0bEac1d93d4E20",
+                "entity_type": "wallet",
+                "risk_score": 85,
+                "verdict": "block",
+                "top_reason": "Flagged for multiple wash trades"
+            }
+        ]
+    }
+
+@app.post("/analyze", response_model=AnalyzeResponse)
+async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+    """Unified analyze endpoint for various entity types"""
+    try:
+        if req.entity_type == "email":
+            # Analyze as message/email for phishing
+            result = await threat_analyzer.analyze_message(req.entity, "")
+        elif req.entity_type == "transaction":
+            # Analyze as transaction for anomalies
+            result = await threat_analyzer.analyze_transaction(req.entity, 0, "")
+        else:
+            # Default analysis for wallet, unknown, etc.
+            result = await threat_analyzer.analyze_message(req.entity, "")
+        
+        # Format response to match frontend expectations
+        return AnalyzeResponse(
+            entity=req.entity,
+            entity_type=req.entity_type,
+            risk_score=result.get("risk_score", 0),
+            verdict=result.get("verdict", "review"),
+            reasons=result.get("reasons", []),
+            case_id=f"case_{hash(req.entity) % 10000}",
+            cached=False,
+            ai_summary=result.get("summary"),
+            agreement=result.get("agreement"),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze/message")
 async def analyze_message(data: MessageInput):

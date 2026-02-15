@@ -58,13 +58,16 @@ export default function App() {
   async function refreshAlerts() {
     try {
       const data = await fetchAlerts(20);
+      console.log("Alerts data:", data);
       setAlerts((data.alerts || []) as AlertItem[]);
-    } catch {
+    } catch (e: any) {
+      console.error("Alert fetch error:", e);
       // ignore for MVP
     }
   }
 
   useEffect(() => {
+    console.log("App mounted, fetching initial alerts");
     refreshAlerts();
     const id = window.setInterval(refreshAlerts, 2500);
     return () => window.clearInterval(id);

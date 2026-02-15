@@ -1,0 +1,10 @@
+myenv
+__pycache__
+*.pyc
+.git
+.gitignore
+.env
+.env.local
+*.log
+.DS_Store
+node_modules
