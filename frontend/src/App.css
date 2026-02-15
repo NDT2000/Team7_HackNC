@@ -3,9 +3,9 @@
 }
 
 .app {
-  max-width: 1200px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 24px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: #e0e0e0;
 }
