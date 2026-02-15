@@ -54,10 +54,14 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             merchant = req.context.get("merchant", "") if req.context else ""
             result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
         else:
-            # Default analysis for wallet, unknown, etc.
             result = await threat_analyzer.analyze_message(req.entity, "")
-        
-        # Format response to match frontend expectations
+
+        # The analyzer may return a plain string (AI text) or a dict
+        if isinstance(result, str):
+            result = {"summary": result}
+        elif not isinstance(result, dict):
+            result = {"summary": str(result)}
+
         return AnalyzeResponse(
             entity=req.entity,
             entity_type=req.entity_type,
