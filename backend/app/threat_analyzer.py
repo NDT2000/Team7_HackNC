@@ -62,14 +62,8 @@ class ThreatAnalyzer:
     
     async def analyze_crypto_wallet(self, wallet_address):
         """Analyze crypto wallet for suspicious activity"""
-        # 1. Valkey "Hot List" Check
-        if self.db.exists(f"malicious_wallet:{wallet_address}"):
-            return {"status": "CRITICAL", "reason": "Wallet linked to known hack."}
-        
-        # 2. Valkey Reputation Check
-        suspicious_score = self.db.get(f"wallet_reputation:{wallet_address}")
-        if suspicious_score and float(suspicious_score) > 0.8:
-            return {"status": "HIGH_RISK", "reason": f"Known suspicious activity. Risk score: {suspicious_score}"}
+        if self.db.sismember("global_blocklist", wallet_address):
+            return {"status": "BLOCKED", "reason": "Known malicious sender."}
             
         client = BackboardClient(api_key=self.api_key)
         thread = await client.create_thread(self.assistant_id)
