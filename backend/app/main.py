@@ -33,31 +33,26 @@ def health() -> Dict[str, Any]:
 
 @app.get("/alerts")
 def alerts(limit: int = 50):
-    """Return mock alerts for testing"""
+    """Return recent threat alerts"""
+    # TODO: Fetch from database/cache
+    # For now, return empty list - will be populated by analyze endpoint
     return {
-        "alerts": [
-            {
-                "ts": int(time.time()),
-                "case_id": "case_001",
-                "entity": "0x742d35Cc0633a2ca6abe7D17dd0bEac1d93d4E20",
-                "entity_type": "wallet",
-                "risk_score": 85,
-                "verdict": "block",
-                "top_reason": "Flagged for multiple wash trades"
-            }
-        ]
+        "alerts": []
     }
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     """Unified analyze endpoint for various entity types"""
     try:
+        # Pass the body text for email analysis
         if req.entity_type == "email":
             # Analyze as message/email for phishing
-            result = await threat_analyzer.analyze_message(req.entity, "")
+            result = await threat_analyzer.analyze_message(req.entity, req.context.get("body", "") if req.context else "")
         elif req.entity_type == "transaction":
             # Analyze as transaction for anomalies
-            result = await threat_analyzer.analyze_transaction(req.entity, 0, "")
+            amount = req.context.get("amount", 0) if req.context else 0
+            merchant = req.context.get("merchant", "") if req.context else ""
+            result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
         else:
             # Default analysis for wallet, unknown, etc.
             result = await threat_analyzer.analyze_message(req.entity, "")
@@ -72,9 +67,10 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             case_id=f"case_{hash(req.entity) % 10000}",
             cached=False,
             ai_summary=result.get("summary"),
-            agreement=result.get("agreement"),
+            agreement=None,
         )
     except Exception as e:
+        print(f"Error in analyze: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze/message")

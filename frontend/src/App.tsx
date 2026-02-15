@@ -80,7 +80,19 @@ export default function App() {
     try {
       const data = (await analyzeEntity(entity.trim(), entityType)) as AnalyzeResult;
       setResult(data);
-      refreshAlerts();
+      
+      // Add to alerts feed
+      const alertItem: AlertItem = {
+        ts: Math.floor(Date.now() / 1000),
+        case_id: data.case_id,
+        entity: data.entity,
+        entity_type: data.entity_type,
+        risk_score: data.risk_score,
+        verdict: data.verdict,
+        top_reason: data.reasons?.[0] || undefined
+      };
+      
+      setAlerts((prev) => [alertItem, ...prev].slice(0, 20)); // Keep last 20 alerts
     } catch (e: any) {
       setErr(e?.message || "Something went wrong");
     } finally {
