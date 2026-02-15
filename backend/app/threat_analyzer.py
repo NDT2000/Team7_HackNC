@@ -92,7 +92,7 @@ class ThreatAnalyzer:
     
     async def analyze_transaction(self, user_id, amount, merchant):
         """Analyze transaction for anomalies"""
-        avg_spend = float(self.db.get(f"user:{user_id}:avg_spend") or 10)
+        avg_spend = float(self.db.get(user_id))
         
         if amount > (avg_spend * 10):
             client = BackboardClient(api_key=self.api_key)
@@ -111,7 +111,7 @@ class ThreatAnalyzer:
 
             client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 
-            confidence_score = message.get("confidence_score", message.get("confidence score", 0.5))
+            confidence_score = message["confidence score"]
 
             response = client.models.generate_content(model = "gemini-3-flash-preview",
                     contents = f"""Consider yourself to be a Bank Manager. For the following receiver: {merchant}, and 
@@ -158,7 +158,8 @@ class ThreatAnalyzer:
 
         message = _extract_json(analysis.content)
 
-        confidence_score = message.get("confidence score", 0.5)
+        confidence_score = message["confidence score"]
+
 
         client_gemini = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 
