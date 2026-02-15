@@ -98,20 +98,19 @@ export default function App() {
     setLoading(true);
     setResult(null);
     try {
-      let entityValue = ""; 
+      let entityValue = "";
       let context: any = null;
       switch (entityType) {
         case "email":
           entityValue = emailData.senderId;
-          context = { message: emailData.message };
+          context = { body: emailData.message };
           break;
         case "wallet":
           entityValue = walletData.cryptoId;
           break;
         case "transaction":
           entityValue = transactionData.userId;
-          context = {amount: parseFloat(transactionData.amount) || 0, merchant: transactionData.senderId};
-
+          context = { amount: parseFloat(transactionData.amount) || 0, merchant: transactionData.senderId };
           break;
       }
 

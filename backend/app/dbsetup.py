@@ -3,8 +3,7 @@ import os
 
 valkey_host = os.getenv("VALKEY_HOST", "localhost")
 valkey_port = int(os.getenv("VALKEY_PORT", "6379"))
-
-db = valkey.Valkey(host = valkey_host, port = valkey_port, db = 0)
+db = valkey.Valkey(host=valkey_host, port=valkey_port, db=0)
 
 set_name = "global_blocklist"
 

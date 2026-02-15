@@ -48,12 +48,16 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         # Pass the body text for email analysis
         if req.entity_type == "email":
             # Analyze as message/email for phishing
-            result = await threat_analyzer.analyze_message(req.entity, req.context.get("message", "") if req.context else "")
+            result = await threat_analyzer.analyze_message(req.entity, req.context.get("body", req.context.get("message", "")) if req.context else "")
         elif req.entity_type == "transaction":
             # Analyze as transaction for anomalies
             amount = req.context.get("amount", 0) if req.context else 0
             merchant = req.context.get("merchant", "") if req.context else ""
             result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
+        elif req.entity_type == "wallet":
+            result = await threat_analyzer.analyze_crypto_wallet(req.entity)
+        else:
+            result = await threat_analyzer.analyze_message(req.entity, "")
 
         # The analyzer may return a plain string (AI text) or a dict
         # Handle blocklist results first

@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 from backboard import BackboardClient
 import valkey
@@ -10,14 +11,16 @@ import re
 
 load_dotenv()
 
-def _safe_parse_json(text):
-    """Safely extract JSON from text that may contain non-JSON content."""
+def _extract_json(text):
+    """Extract JSON object from text that may contain plain text before/after it."""
     if not text:
         return {}
+    # Try direct parse first
     try:
         return json.loads(text)
     except (json.JSONDecodeError, TypeError):
         pass
+    # Find embedded JSON object in the text
     match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
     if match:
         try:
@@ -37,7 +40,9 @@ class ThreatAnalyzer:
     async def analyze_message(self, sender, text):
         """Analyze message for phishing/social engineering"""
         # Check blocklist
-        if self.db.sismember("global_blocklist", sender):
+        print(sender)
+        print(self.db.sismember("global_blocklist", sender))
+        if self.db.sismember("global_blocklist", sender) == 1:
             return {"status": "BLOCKED", "reason": "Known malicious sender."}
         
         client = BackboardClient(api_key=self.api_key)
@@ -58,9 +63,8 @@ class ThreatAnalyzer:
             stream=False
         )
 
-        message = json.loads(analysis.content)
-
-        confidence_score = message["confidence score"]
+        message = _extract_json(analysis.content)
+        confidence_score = message.get("confidence score", 0.5)
 
         client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 
@@ -74,11 +78,12 @@ class ThreatAnalyzer:
                             Limit your response to 600 characters. Note that the confidence score indicates the percentage
                             of the transaction being not fraudulent.""")
         
-        gemini_resp = response.text
+        gemini_resp = response.text.strip()
 
-        if gemini_resp != "yes":
-            gem_message = json.loads(gemini_resp)
-            confidence_score = gem_message["confidence score"]
+        if gemini_resp.lower() != "yes":
+            gem_message = _extract_json(gemini_resp)
+            if "confidence score" in gem_message:
+                confidence_score = gem_message["confidence score"]
 
         if confidence_score < 0.4:
             self.db.sadd("global_blocklist", sender)
@@ -102,11 +107,11 @@ class ThreatAnalyzer:
                 stream=False
             )
 
-            message = json.loads(analysis.content)
+            message = _extract_json(analysis.content)
 
             client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 
-            confidence_score = message["confidence_score"]
+            confidence_score = message.get("confidence_score", message.get("confidence score", 0.5))
 
             response = client.models.generate_content(model = "gemini-3-flash-preview",
                     contents = f"""Consider yourself to be a Bank Manager. For the following receiver: {merchant}, and 
@@ -118,12 +123,13 @@ class ThreatAnalyzer:
                                 Limit your response to 600 characters. Note that the confidence score indicates the percentage
                                 of the transaction being not fraudulent.""")
             
-            gemini_resp = response.text
+            gemini_resp = response.text.strip()
             print(gemini_resp)
 
-            if gemini_resp != "yes":
-                gem_message = json.loads(gemini_resp)
-                confidence_score = gem_message["confidence score"]
+            if gemini_resp.lower() != "yes":
+                gem_message = _extract_json(gemini_resp)
+                if "confidence score" in gem_message:
+                    confidence_score = gem_message["confidence score"]
 
 
             if confidence_score < 0.4:
@@ -150,13 +156,13 @@ class ThreatAnalyzer:
             stream=False
         )
 
-        message = json.loads(analysis.content)
+        message = _extract_json(analysis.content)
 
-        confidence_score = message["confidence_score"]
+        confidence_score = message.get("confidence score", 0.5)
 
-        confidence_score = message["confidence_score"]
+        client_gemini = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 
-        response = client.models.generate_content(model = "gemini-3-flash-preview",
+        response = client_gemini.models.generate_content(model = "gemini-3-flash-preview",
                     contents = f"""Consider yourself to be a Crypto expert. I recevied a payment request from the following wallet:
                                 {wallet_address}, and based on that, I received an analysis: {analysis.content}. Validate the output. 
                                 If you agree, just say yes.
@@ -166,12 +172,13 @@ class ThreatAnalyzer:
                                 Limit your response to 600 characters. Note that the confidence score indicates the percentage
                                 of the transaction being not fraudulent.""")
             
-        gemini_resp = response.text
+        gemini_resp = response.text.strip()
         print(gemini_resp)
 
-        if gemini_resp != "yes":
-            gem_message = json.loads(gemini_resp)
-            confidence_score = gem_message["confidence score"]
+        if gemini_resp.lower() != "yes":
+            gem_message = _extract_json(gemini_resp)
+            if "confidence score" in gem_message:
+                confidence_score = gem_message["confidence score"]
 
         if confidence_score < 0.4:
             self.db.sadd("global_blocklist", wallet_address)
