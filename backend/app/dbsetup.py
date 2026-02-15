@@ -10,5 +10,7 @@ set_name = "global_blocklist"
 
 db.sadd(set_name, "BlockedUser1", "BlockedUser2", "0x742d35Cc0633a2ca6abe7D17dd0bEac1d93d4E20")
 
+db.set("user123", "390")
+
 for item in db.smembers(set_name):
     print(item)

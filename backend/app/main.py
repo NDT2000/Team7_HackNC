@@ -86,7 +86,7 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
 
             # Extract confidence score and convert to risk score (0-100)
             confidence = parsed.get("confidence score", parsed.get("confidence", None))
-            summary_text = parsed.get("explanation", parsed.get("explaination", result))
+            summary_text = parsed.get("explaination", parsed.get("explaination", result))
 
             if confidence is not None:
                 try:
@@ -119,7 +119,7 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             entity_type=req.entity_type,
             risk_score=risk_score,
             verdict=verdict,
-            reasons=result.get("reasons", []),
+            reasons=result.get("explaination", []),
             case_id=f"case_{hash(req.entity) % 10000}",
             cached=False,
             ai_summary=result.get("summary"),
