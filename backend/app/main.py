@@ -52,6 +52,9 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             amount = req.context.get("amount", 0) if req.context else 0
             merchant = req.context.get("merchant", "") if req.context else ""
             result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
+        elif req.entity_type == "wallet":
+            # Analyze as crypto wallet
+            result = await threat_analyzer.analyze_crypto_wallet(req.entity)
         else:
             result = await threat_analyzer.analyze_message(req.entity, "")
 
