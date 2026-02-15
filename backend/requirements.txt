@@ -8,3 +8,4 @@ valkey[libvalkey]
 requests
 dotenv
 backboard-sdk
+google-genai
