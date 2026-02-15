@@ -53,16 +53,18 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     """Unified analyze endpoint for various entity types"""
     try:
         if req.entity_type == "email":
-            # Analyze as message/email for phishing
             result = await threat_analyzer.analyze_message(req.entity, "")
         elif req.entity_type == "transaction":
-            # Analyze as transaction for anomalies
             result = await threat_analyzer.analyze_transaction(req.entity, 0, "")
         else:
-            # Default analysis for wallet, unknown, etc.
             result = await threat_analyzer.analyze_message(req.entity, "")
-        
-        # Format response to match frontend expectations
+
+        # The analyzer may return a plain string (AI text) or a dict
+        if isinstance(result, str):
+            result = {"summary": result}
+        elif not isinstance(result, dict):
+            result = {"summary": str(result)}
+
         return AnalyzeResponse(
             entity=req.entity,
             entity_type=req.entity_type,
