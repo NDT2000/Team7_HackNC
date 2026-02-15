@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { analyzeEntity, fetchAlerts, type EntityType } from "./lib/api";
+import "./App.css";
 
 type Verdict = "allow" | "review" | "block";
 
@@ -25,11 +26,24 @@ type AlertItem = {
   top_reason?: string | null;
 };
 
-const badgeStyle = (verdict: Verdict) => {
-  if (verdict === "block") return { background: "#ff3b3b", color: "white" as const };
-  if (verdict === "review") return { background: "#ffb020", color: "black" as const };
-  return { background: "#1ed760", color: "black" as const };
-};
+function badgeClass(verdict: Verdict) {
+  return "badge badge-" + verdict;
+}
+
+function riskClass(score: number) {
+  if (score >= 70) return "risk-score high";
+  if (score >= 40) return "risk-score medium";
+  return "risk-score low";
+}
+
+function formatTime(ts: number) {
+  try {
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch {
+    return String(ts);
+  }
+}
 
 export default function App() {
   const [entity, setEntity] = useState("");
@@ -71,194 +85,166 @@ export default function App() {
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && canAnalyze) onAnalyze();
+  }
+
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0f14", color: "#e7eef7" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+    <div className="app-shell">
+      <div className="app-container">
+        {/* Header */}
+        <header className="header">
           <div>
-            <h1 style={{ margin: 0, fontSize: 28 }}>Operation Firewall</h1>
-            <p style={{ marginTop: 6, color: "#9fb0c3" }}>
-              Bank-facing fraud intelligence • Valkey timeline • AI validation (MVP)
-            </p>
+            <div className="header-brand">
+              <div className="header-logo">&#x1f6e1;&#xfe0f;</div>
+              <div>
+                <div className="header-title">Operation Firewall</div>
+                <div className="header-subtitle">
+                  Bank-facing fraud intelligence &bull; Valkey timeline &bull; AI validation
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{ color: "#9fb0c3", fontSize: 12 }}>
-            API: {import.meta.env.VITE_API_BASE || "http://localhost:8000"}
+          <div className="header-meta">
+            <span className="status-dot" />
+            {import.meta.env.VITE_API_BASE || "http://localhost:8000"}
           </div>
         </header>
 
         {/* Analyze Panel */}
-        <div
-          style={{
-            marginTop: 18,
-            padding: 18,
-            borderRadius: 16,
-            border: "1px solid #1c2530",
-            background: "#0f1620"
-          }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 18 }}>Analyze Entity</h2>
+        <section className="card" style={{ animationDelay: "0.05s" }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">
+                <span className="icon">&#x1f50d;</span> Analyze Entity
+              </div>
+              <div className="card-desc">Submit a wallet, email, or transaction ID for risk assessment</div>
+            </div>
+          </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 140px", gap: 12 }}>
+          <div className="analyze-grid">
             <input
+              className="input-field"
               value={entity}
               onChange={(e) => setEntity(e.target.value)}
-              placeholder="Paste wallet / email / transaction id…"
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #243242",
-                background: "#0b0f14",
-                color: "#e7eef7"
-              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Paste wallet / email / transaction ID..."
             />
             <select
+              className="select-field"
               value={entityType}
               onChange={(e) => setEntityType(e.target.value as EntityType)}
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #243242",
-                background: "#0b0f14",
-                color: "#e7eef7"
-              }}
             >
-              <option value="wallet">wallet</option>
-              <option value="email">email</option>
-              <option value="transaction">transaction</option>
-              <option value="unknown">unknown</option>
+              <option value="wallet">Wallet</option>
+              <option value="email">Email</option>
+              <option value="transaction">Transaction</option>
+              <option value="unknown">Unknown</option>
             </select>
 
-            <button
-              onClick={onAnalyze}
-              disabled={!canAnalyze}
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #2a3a4d",
-                background: canAnalyze ? "#e7eef7" : "#2a3a4d",
-                color: canAnalyze ? "#0b0f14" : "#9fb0c3",
-                fontWeight: 700,
-                cursor: canAnalyze ? "pointer" : "not-allowed"
-              }}
-            >
-              {loading ? "Analyzing…" : "Analyze"}
+            <button className="btn-primary" onClick={onAnalyze} disabled={!canAnalyze}>
+              {loading && <span className="spinner" />}
+              {loading ? "Analyzing..." : "Analyze"}
             </button>
           </div>
 
-          {err && <div style={{ marginTop: 10, color: "#ff6b6b", fontSize: 13 }}>{err}</div>}
+          {err && <div className="error-msg">{err}</div>}
 
           {result && (
-            <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "320px 1fr", gap: 14 }}>
-              <div style={{ padding: 14, borderRadius: 14, border: "1px solid #1c2530", background: "#0b0f14" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div className="result-grid">
+              <div className="result-card">
+                <div className="result-overview">
                   <div>
-                    <div style={{ color: "#9fb0c3", fontSize: 12 }}>Verdict</div>
-                    <div
-                      style={{
-                        marginTop: 6,
-                        display: "inline-flex",
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        ...badgeStyle(result.verdict)
-                      }}
-                    >
-                      {String(result.verdict).toUpperCase()}
-                    </div>
+                    <div className="label">Verdict</div>
+                    <span className={badgeClass(result.verdict)}>
+                      {result.verdict.toUpperCase()}
+                    </span>
                   </div>
-
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ color: "#9fb0c3", fontSize: 12 }}>Risk Score</div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{result.risk_score}</div>
+                    <div className="label">Risk Score</div>
+                    <div className={riskClass(result.risk_score)}>{result.risk_score}</div>
                   </div>
                 </div>
 
-                <div style={{ marginTop: 10, color: "#9fb0c3", fontSize: 12 }}>Cross-check agreement</div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>
-                  {typeof result.agreement === "number" ? `${Math.round(result.agreement * 100)}%` : "—"}
+                <div style={{ marginTop: 20 }}>
+                  <div className="label">Cross-check Agreement</div>
+                  <div className="agreement-value">
+                    {typeof result.agreement === "number"
+                      ? Math.round(result.agreement * 100) + "%"
+                      : "\u2014"}
+                  </div>
                 </div>
 
-                <div style={{ marginTop: 10, color: "#9fb0c3", fontSize: 12 }}>Case</div>
-                <div style={{ fontSize: 12, color: "#cfe1f5" }}>
-                  {result.case_id} • cached: {String(result.cached)}
+                <div style={{ marginTop: 16 }}>
+                  <div className="label">Case ID</div>
+                  <div className="case-meta">
+                    {result.case_id}
+                    {result.cached && <span className="cached-badge">Cached</span>}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ padding: 14, borderRadius: 14, border: "1px solid #1c2530", background: "#0b0f14" }}>
-                <div style={{ color: "#9fb0c3", fontSize: 12 }}>Top reasons</div>
-                <ul style={{ marginTop: 8, color: "#e7eef7" }}>
+              <div className="result-card">
+                <div className="label">Top Reasons</div>
+                <ul className="reasons-list">
                   {(result.reasons || []).slice(0, 6).map((r, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      {r}
-                    </li>
+                    <li key={i}>{r}</li>
                   ))}
                 </ul>
 
-                <div style={{ marginTop: 12, color: "#9fb0c3", fontSize: 12 }}>AI Summary (placeholder)</div>
-                <div style={{ marginTop: 6 }}>{result.ai_summary || "—"}</div>
+                <div className="ai-summary">
+                  <div className="ai-summary-label">
+                    <span>&#x2728;</span> AI Summary
+                  </div>
+                  {result.ai_summary || "No AI summary available for this entity."}
+                </div>
               </div>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Threat Feed */}
-        <div
-          style={{
-            marginTop: 18,
-            padding: 18,
-            borderRadius: 16,
-            border: "1px solid #1c2530",
-            background: "#0f1620"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <section className="card threat-feed">
+          <div className="card-header">
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Threat Feed</h2>
-              <p style={{ marginTop: 6, color: "#9fb0c3" }}>Live alerts from Valkey (polling every 2.5s)</p>
+              <div className="card-title">
+                <span className="icon">&#x1f4e1;</span> Threat Feed
+              </div>
+              <div className="card-desc">Live alerts from Valkey &mdash; auto-refreshing every 2.5s</div>
             </div>
-            <button
-              onClick={refreshAlerts}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 12,
-                border: "1px solid #2a3a4d",
-                background: "#0b0f14",
-                color: "#cfe1f5",
-                cursor: "pointer"
-              }}
-            >
-              Refresh
+            <button className="btn-ghost" onClick={refreshAlerts}>
+              &#x21bb; Refresh
             </button>
           </div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {alerts.length === 0 && <div style={{ color: "#9fb0c3" }}>No alerts yet. Run an analysis above.</div>}
+          <div className="alert-list">
+            {alerts.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">&#x1f4ed;</div>
+                No alerts yet. Run an analysis above to generate threat data.
+              </div>
+            )}
 
             {alerts.map((a, idx) => (
-              <div
-                key={idx}
-                style={{ padding: 12, borderRadius: 14, border: "1px solid #1c2530", background: "#0b0f14" }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ padding: "4px 10px", borderRadius: 999, ...badgeStyle(a.verdict) }}>
-                      {String(a.verdict).toUpperCase()}
-                    </span>
-                    <strong>score {a.risk_score}</strong>
+              <div className="alert-item" key={idx} style={{ animationDelay: idx * 0.05 + "s" }}>
+                <div className="alert-top">
+                  <div className="alert-left">
+                    <span className={badgeClass(a.verdict)}>{a.verdict.toUpperCase()}</span>
+                    <span className="alert-score">Score: {a.risk_score}</span>
                   </div>
-                  <div style={{ color: "#9fb0c3", fontSize: 12 }}>{a.ts}</div>
+                  <span className="alert-time">{formatTime(a.ts)}</span>
                 </div>
-
-                <div style={{ marginTop: 6, color: "#9fb0c3", fontSize: 12 }}>
-                  {a.entity_type} • {a.entity}
+                <div className="alert-entity">
+                  <span className="entity-type-tag">{a.entity_type}</span>
+                  {a.entity}
                 </div>
-                {a.top_reason && <div style={{ marginTop: 8 }}>{a.top_reason}</div>}
+                {a.top_reason && <div className="alert-reason">{a.top_reason}</div>}
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <footer style={{ marginTop: 22, color: "#9fb0c3", fontSize: 12 }}>
-          Next: add “Retrieved Evidence” (RAG) panel + case history.
+        <footer className="footer">
+          Operation Firewall &bull; HackNC Team 7 &bull; MVP
         </footer>
       </div>
     </div>
