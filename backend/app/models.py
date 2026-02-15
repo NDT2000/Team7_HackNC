@@ -28,3 +28,10 @@ class TransactionInput(BaseModel):
     user_id: str
     amount: float
     merchant: str
+
+class CryptoWalletInput(BaseModel):
+    address: str
+
+class ThreatInput(BaseModel):
+    type: str  # "message", "transaction", or "crypto"
+    content: dict

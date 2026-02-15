@@ -6,8 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .threat_analyzer import ThreatAnalyzer
-from .models import MessageInput, TransactionInput, AnalyzeRequest, AnalyzeResponse
-
+from .models import MessageInput, TransactionInput, AnalyzeRequest, AnalyzeResponse, CryptoWalletInput
 # from .config import settings
 # from .models import AnalyzeRequest, AnalyzeResponse
 # from .storage import ValkeyStore
@@ -91,6 +90,15 @@ async def analyze_transaction(data: TransactionInput):
     """Analyze a transaction for anomalies"""
     try:
         result = await threat_analyzer.analyze_transaction(data.user_id, data.amount, data.merchant)
+        return {"analysis": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze/crypto")
+async def analyze_crypto(data: CryptoWalletInput):
+    """Analyze crypto wallet for suspicious activity"""
+    try:
+        result = await threat_analyzer.analyze_crypto_wallet(data.address)
         return {"analysis": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
