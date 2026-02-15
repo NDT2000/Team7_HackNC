@@ -60,6 +60,31 @@ class ThreatAnalyzer:
         
         return {"status": "SAFE", "reason": "Within normal spending limits."}
     
+    async def analyze_crypto_wallet(self, wallet_address):
+        """Analyze crypto wallet for suspicious activity"""
+        # 1. Valkey "Hot List" Check
+        if self.db.exists(f"malicious_wallet:{wallet_address}"):
+            return {"status": "CRITICAL", "reason": "Wallet linked to known hack."}
+        
+        # 2. Valkey Reputation Check
+        suspicious_score = self.db.get(f"wallet_reputation:{wallet_address}")
+        if suspicious_score and float(suspicious_score) > 0.8:
+            return {"status": "HIGH_RISK", "reason": f"Known suspicious activity. Risk score: {suspicious_score}"}
+            
+        client = BackboardClient(api_key=self.api_key)
+        thread = await client.create_thread(self.assistant_id)
+        
+        prompt = f"Assess risk for crypto wallet {wallet_address}."
+        analysis = await client.add_message(
+            thread_id=thread.thread_id,
+            content=prompt,
+            llm_provider="openai",
+            model_name="gpt-4o",
+            stream=False
+        )
+        
+        return analysis.content
+    
     async def triage_threat(self, input_data):
         """Main entry point for threat analysis"""
         if input_data['type'] == 'message':
@@ -72,3 +97,10 @@ class ThreatAnalyzer:
             amount = input_data['content']['amount']
             merchant = input_data['content']['merchant']
             return await self.analyze_transaction(user_id, amount, merchant)
+        
+        elif input_data['type'] == 'crypto':
+            wallet_address = input_data['content']['address']
+            return await self.analyze_crypto_wallet(wallet_address)
+        
+        else:
+            raise ValueError(f"Unknown threat type: {input_data['type']}")
