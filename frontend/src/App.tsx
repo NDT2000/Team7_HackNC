@@ -46,14 +46,34 @@ function formatTime(ts: number) {
 }
 
 export default function App() {
-  const [entity, setEntity] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("wallet");
+  const [emailData, setEmailData] = useState({ message: "", senderId: "" });
+  const [walletData, setWalletData] = useState({ cryptoId: "" });
+  const [transactionData, setTransactionData] = useState({ userId: "", senderId: "", amount: "" });
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const canAnalyze = useMemo(() => entity.trim().length > 0 && !loading, [entity, loading]);
+  const getCanAnalyze = () => {
+    if (loading) return false;
+    switch (entityType) {
+      case "email":
+        return emailData.message.trim().length > 0 && emailData.senderId.trim().length > 0;
+      case "wallet":
+        return walletData.cryptoId.trim().length > 0;
+      case "transaction":
+        return (
+          transactionData.userId.trim().length > 0 &&
+          transactionData.senderId.trim().length > 0 &&
+          transactionData.amount.trim().length > 0
+        );
+      default:
+        return false;
+    }
+  };
+
+  const canAnalyze = useMemo(() => getCanAnalyze(), [emailData, walletData, transactionData, entityType, loading]);
 
   async function refreshAlerts() {
     try {
@@ -78,7 +98,20 @@ export default function App() {
     setLoading(true);
     setResult(null);
     try {
-      const data = (await analyzeEntity(entity.trim(), entityType)) as AnalyzeResult;
+      let entityValue = "";
+      switch (entityType) {
+        case "email":
+          entityValue = emailData.message;
+          break;
+        case "wallet":
+          entityValue = walletData.cryptoId;
+          break;
+        case "transaction":
+          entityValue = transactionData.userId;
+          break;
+      }
+
+      const data = (await analyzeEntity(entityValue, entityType)) as AnalyzeResult;
       setResult(data);
       
       // Add to alerts feed
@@ -138,13 +171,61 @@ export default function App() {
           </div>
 
           <div className="analyze-grid">
-            <input
-              className="input-field"
-              value={entity}
-              onChange={(e) => setEntity(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Paste wallet / email / transaction ID..."
-            />
+            {entityType === "email" && (
+              <>
+                <input
+                  className="input-field"
+                  value={emailData.message}
+                  onChange={(e) => setEmailData({ ...emailData, message: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter message content..."
+                />
+                <input
+                  className="input-field"
+                  value={emailData.senderId}
+                  onChange={(e) => setEmailData({ ...emailData, senderId: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter sender user ID..."
+                />
+              </>
+            )}
+
+            {entityType === "wallet" && (
+              <input
+                className="input-field"
+                value={walletData.cryptoId}
+                onChange={(e) => setWalletData({ cryptoId: e.target.value })}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter crypto wallet ID..."
+              />
+            )}
+
+            {entityType === "transaction" && (
+              <>
+                <input
+                  className="input-field"
+                  value={transactionData.userId}
+                  onChange={(e) => setTransactionData({ ...transactionData, userId: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter user ID..."
+                />
+                <input
+                  className="input-field"
+                  value={transactionData.senderId}
+                  onChange={(e) => setTransactionData({ ...transactionData, senderId: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter sender ID..."
+                />
+                <input
+                  className="input-field"
+                  value={transactionData.amount}
+                  onChange={(e) => setTransactionData({ ...transactionData, amount: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter amount..."
+                />
+              </>
+            )}
+
             <select
               className="select-field"
               value={entityType}

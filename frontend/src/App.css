@@ -128,9 +128,10 @@
 
 /* ── Analyze Form ── */
 .analyze-grid {
-  display: grid;
-  grid-template-columns: 1fr 170px 150px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  align-items: flex-end;
 }
 
 .input-field {
@@ -142,6 +143,8 @@
   font-size: 14px;
   font-family: var(--font-sans);
   transition: all 0.2s ease;
+  flex: 1 1 200px;
+  min-width: 150px;
 }
 
 .input-field::placeholder {
@@ -169,6 +172,7 @@
   background-position: right 14px center;
   padding-right: 36px;
   transition: all 0.2s ease;
+  flex: 0 0 170px;
 }
 
 .select-field:focus {
@@ -191,6 +195,7 @@
   transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
+  flex: 0 0 150px;
 }
 
 .btn-primary::before {
@@ -558,7 +563,21 @@
   }
 
   .analyze-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .input-field {
+    min-width: 100%;
+  }
+
+  .select-field {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .btn-primary {
+    flex: 1 1 100%;
+    min-width: 100%;
   }
 
   .result-grid {
