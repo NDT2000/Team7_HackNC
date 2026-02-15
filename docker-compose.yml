@@ -1,0 +1,17 @@
+services:
+  valkey:
+    image: valkey/valkey:latest
+    ports:
+      - "6379:6379"
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./.env
+    environment:
+      - VALKEY_URL=${VALKEY_URL:-redis://valkey:6379/0}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - valkey
