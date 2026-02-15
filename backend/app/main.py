@@ -48,19 +48,29 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         # Pass the body text for email analysis
         if req.entity_type == "email":
             # Analyze as message/email for phishing
-            result = await threat_analyzer.analyze_message(req.entity, req.context.get("body", "") if req.context else "")
+            result = await threat_analyzer.analyze_message(req.entity, req.context.get("message", "") if req.context else "")
         elif req.entity_type == "transaction":
             # Analyze as transaction for anomalies
             amount = req.context.get("amount", 0) if req.context else 0
             merchant = req.context.get("merchant", "") if req.context else ""
             result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
-        elif req.entity_type == "wallet":
-            result = await threat_analyzer.analyze_crypto_wallet(req.entity)
-        else:
-            result = await threat_analyzer.analyze_message(req.entity, "")
 
         # The analyzer may return a plain string (AI text) or a dict
-        if isinstance(result, str):
+        # Handle blocklist results first
+        if isinstance(result, dict) and result.get("status") == "BLOCKED":
+            return AnalyzeResponse(
+                entity=req.entity,
+                entity_type=req.entity_type,
+                risk_score=100,
+                verdict="block",
+                reasons=[result.get("reason", "Blocked entity")],
+                case_id=f"case_{hash(req.entity) % 10000}",
+                cached=False,
+                ai_summary=result.get("reason", "Entity is on the blocklist."),
+                agreement=None,
+            )
+
+        if isinstance(result, str) and result.strip():
             # Try to parse JSON from AI response to extract confidence score
             parsed = {}
             try:
@@ -88,6 +98,10 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
                 risk_score = 0
 
             result = {"summary": summary_text, "risk_score": risk_score}
+        elif not isinstance(result, dict):
+            result = {"summary": str(result)}
+        elif isinstance(result, str):
+            result = {"summary": "Analysis returned empty response.", "risk_score": 0}
         elif not isinstance(result, dict):
             result = {"summary": str(result)}
 

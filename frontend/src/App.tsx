@@ -98,20 +98,24 @@ export default function App() {
     setLoading(true);
     setResult(null);
     try {
-      let entityValue = "";
+      let entityValue = ""; 
+      let context: any = null;
       switch (entityType) {
         case "email":
-          entityValue = emailData.message;
+          entityValue = emailData.senderId;
+          context = { message: emailData.message };
           break;
         case "wallet":
           entityValue = walletData.cryptoId;
           break;
         case "transaction":
           entityValue = transactionData.userId;
+          context = {amount: parseFloat(transactionData.amount) || 0, merchant: transactionData.senderId};
+
           break;
       }
 
-      const data = (await analyzeEntity(entityValue, entityType)) as AnalyzeResult;
+      const data = (await analyzeEntity(entityValue, entityType, context)) as AnalyzeResult;
       setResult(data);
       
       // Add to alerts feed

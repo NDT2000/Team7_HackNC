@@ -6,8 +6,25 @@ import os
 from .getassistantid import get_assistant_id
 from dotenv import load_dotenv
 from google import genai
+import re
 
 load_dotenv()
+
+def _safe_parse_json(text):
+    """Safely extract JSON from text that may contain non-JSON content."""
+    if not text:
+        return {}
+    try:
+        return json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return {}
 
 class ThreatAnalyzer:
     def __init__(self):
@@ -43,7 +60,7 @@ class ThreatAnalyzer:
 
         message = json.loads(analysis.content)
 
-        confidence_score = message["confidence_score"]
+        confidence_score = message["confidence score"]
 
         client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
 

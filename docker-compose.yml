@@ -11,7 +11,8 @@ services:
     env_file:
       - ./.env
     environment:
-      - VALKEY_URL=${VALKEY_URL:-redis://valkey:6379/0}
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
     ports:
       - "8000:8000"
     depends_on:
