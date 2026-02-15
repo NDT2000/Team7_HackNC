@@ -1,5 +1,7 @@
 import time
 import asyncio
+import json
+import re
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException
@@ -53,22 +55,56 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
             merchant = req.context.get("merchant", "") if req.context else ""
             result = await threat_analyzer.analyze_transaction(req.entity, amount, merchant)
         elif req.entity_type == "wallet":
-            # Analyze as crypto wallet
             result = await threat_analyzer.analyze_crypto_wallet(req.entity)
         else:
             result = await threat_analyzer.analyze_message(req.entity, "")
 
         # The analyzer may return a plain string (AI text) or a dict
         if isinstance(result, str):
-            result = {"summary": result}
+            # Try to parse JSON from AI response to extract confidence score
+            parsed = {}
+            try:
+                parsed = json.loads(result)
+            except (json.JSONDecodeError, TypeError):
+                # Try to find JSON embedded in the string
+                json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                if json_match:
+                    try:
+                        parsed = json.loads(json_match.group())
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            # Extract confidence score and convert to risk score (0-100)
+            confidence = parsed.get("confidence score", parsed.get("confidence", None))
+            summary_text = parsed.get("explanation", parsed.get("explaination", result))
+
+            if confidence is not None:
+                try:
+                    confidence = float(confidence)
+                    risk_score = int(confidence * 100)
+                except (ValueError, TypeError):
+                    risk_score = 0
+            else:
+                risk_score = 0
+
+            result = {"summary": summary_text, "risk_score": risk_score}
         elif not isinstance(result, dict):
             result = {"summary": str(result)}
+
+        risk_score = result.get("risk_score", 0)
+        # Derive verdict from risk score
+        if risk_score >= 70:
+            verdict = "block"
+        elif risk_score >= 40:
+            verdict = "review"
+        else:
+            verdict = result.get("verdict", "allow")
 
         return AnalyzeResponse(
             entity=req.entity,
             entity_type=req.entity_type,
-            risk_score=result.get("risk_score", 0),
-            verdict=result.get("verdict", "review"),
+            risk_score=risk_score,
+            verdict=verdict,
             reasons=result.get("reasons", []),
             case_id=f"case_{hash(req.entity) % 10000}",
             cached=False,

@@ -6,6 +6,6 @@ redis==5.1.1
 orjson==3.10.7
 valkey[libvalkey]
 requests
-dotenv
+python-dotenv
 backboard-sdk
 google-genai

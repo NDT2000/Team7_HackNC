@@ -13,7 +13,9 @@ class ThreatAnalyzer:
     def __init__(self):
         self.assistant_id = get_assistant_id()
         self.api_key = os.getenv("BACKBOARD_API_KEY")
-        self.db = valkey.Valkey(host="localhost", port=6379, db=0)
+        valkey_host = os.getenv("VALKEY_HOST", "valkey")
+        valkey_port = int(os.getenv("VALKEY_PORT", "6379"))
+        self.db = valkey.Valkey(host=valkey_host, port=valkey_port, db=0)
     
     async def analyze_message(self, sender, text):
         """Analyze message for phishing/social engineering"""
