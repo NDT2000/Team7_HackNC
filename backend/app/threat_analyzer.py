@@ -1,10 +1,11 @@
-
+import json
 import asyncio
 from backboard import BackboardClient
 import valkey
 import os
 from .getassistantid import get_assistant_id
 from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
 
@@ -37,6 +38,31 @@ class ThreatAnalyzer:
             model_name="gpt-4o",
             stream=False
         )
+
+        message = json.loads(analysis.content)
+
+        confidence_score = message["confidence_score"]
+
+        client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
+
+        response = client.models.generate_content(model = "gemini-3-flash-preview",
+                contents = f"""Consider yourself to be a natural langauge analyst. For the following text: {text}, I received
+                            an analysis: {analysis.content}. Validate the output. 
+                            If you agree, just say yes.
+                            If you do not, give the output in this format:
+                            {{"confidence score": confidence score (float datatype)
+                             "explaination": explaination (string datatype)}}
+                            Limit your response to 600 characters. Note that the confidence score indicates the percentage
+                            of the transaction being not fraudulent.""")
+        
+        gemini_resp = response.text
+
+        if gemini_resp != "yes":
+            gem_message = json.loads(gemini_resp)
+            confidence_score = gem_message["confidence score"]
+
+        if confidence_score < 0.4:
+            self.db.sadd("global_blocklist", sender)
         
         return analysis.content
     
@@ -56,6 +82,34 @@ class ThreatAnalyzer:
                 model_name="gpt-4o",
                 stream=False
             )
+
+            message = json.loads(analysis.content)
+
+            client = genai.Client(api_key = os.getenv("GEMINI_API_KEY"))
+
+            confidence_score = message["confidence_score"]
+
+            response = client.models.generate_content(model = "gemini-3-flash-preview",
+                    contents = f"""Consider yourself to be a Bank Manager. For the following receiver: {merchant}, and 
+                                amount: {amount}, I received an analysis: {analysis.content}. Validate the output. 
+                                If you agree, just say yes.
+                                If you do not, give the output in this format:
+                                {{"confidence score": confidence score (float datatype)
+                                "explaination": explaination (string datatype)}}
+                                Limit your response to 600 characters. Note that the confidence score indicates the percentage
+                                of the transaction being not fraudulent.""")
+            
+            gemini_resp = response.text
+            print(gemini_resp)
+
+            if gemini_resp != "yes":
+                gem_message = json.loads(gemini_resp)
+                confidence_score = gem_message["confidence score"]
+
+
+            if confidence_score < 0.4:
+                self.db.sadd("global_blocklist", merchant)
+            
             return analysis.content
         
         return {"status": "SAFE", "reason": "Within normal spending limits."}
@@ -76,6 +130,32 @@ class ThreatAnalyzer:
             model_name="gpt-4o",
             stream=False
         )
+
+        message = json.loads(analysis.content)
+
+        confidence_score = message["confidence_score"]
+
+        confidence_score = message["confidence_score"]
+
+        response = client.models.generate_content(model = "gemini-3-flash-preview",
+                    contents = f"""Consider yourself to be a Crypto expert. I recevied a payment request from the following wallet:
+                                {wallet_address}, and based on that, I received an analysis: {analysis.content}. Validate the output. 
+                                If you agree, just say yes.
+                                If you do not, give the output in this format:
+                                {{"confidence score": confidence score (float datatype)
+                                "explaination": explaination (string datatype)}}
+                                Limit your response to 600 characters. Note that the confidence score indicates the percentage
+                                of the transaction being not fraudulent.""")
+            
+        gemini_resp = response.text
+        print(gemini_resp)
+
+        if gemini_resp != "yes":
+            gem_message = json.loads(gemini_resp)
+            confidence_score = gem_message["confidence score"]
+
+        if confidence_score < 0.4:
+            self.db.sadd("global_blocklist", wallet_address)
         
         return analysis.content
     
